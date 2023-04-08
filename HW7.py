@@ -53,7 +53,34 @@ def make_positions_table(data, cur, conn):
 #     created for you -- see make_positions_table above for details.
 
 def make_players_table(data, cur, conn):
-    pass
+    #"id":9584,"firstName":"Erik","lastName":null,"name":"Erik ten Hag","dateOfBirth":"1970-02-02","nationality":"Netherlands"
+    players = data['squad']
+    cur.execute("CREATE TABLE IF NOT EXISTS Players ( " +
+                "id INTEGER PRIMARY KEY, " +
+                "name TEXT " +
+                "position_id INTEGER " +
+                "birthyear INTEGER " +
+                "nationality TEXT)")
+    
+    fetched_positions = cur.execute("SELECT * FROM Positions").fetchall()
+    positions = {}
+    for position in fetched_positions:
+        positions[position[1]] = int(position[0])
+
+    for player in players:
+        id = player["id"]
+        name = player["name"]
+        birthyear = player["birthyear"]
+        nationality = player["nationality"]
+        position_id = positions[player["position"]]
+        cur.execute("INSERT OR IGNORE INTO Players (id, name, position_id, birthyear, nationality) VALUES (?,?,?,?,?)", (
+            id,
+            name,
+            position_id,
+            birthyear,
+            nationality))
+    
+    conn.commit()
 
 ## [TASK 2]: 10 points
 # Finish the function nationality_search
