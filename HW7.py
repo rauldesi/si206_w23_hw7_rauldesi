@@ -53,13 +53,12 @@ def make_positions_table(data, cur, conn):
 #     created for you -- see make_positions_table above for details.
 
 def make_players_table(data, cur, conn):
-    #"id":9584,"firstName":"Erik","lastName":null,"name":"Erik ten Hag","dateOfBirth":"1970-02-02","nationality":"Netherlands"
     players = data['squad']
     cur.execute("CREATE TABLE IF NOT EXISTS Players ( " +
                 "id INTEGER PRIMARY KEY, " +
-                "name TEXT " +
-                "position_id INTEGER " +
-                "birthyear INTEGER " +
+                "name TEXT, " +
+                "position_id INTEGER, " +
+                "birthyear INTEGER, " +
                 "nationality TEXT)")
     
     fetched_positions = cur.execute("SELECT * FROM Positions").fetchall()
@@ -70,7 +69,7 @@ def make_players_table(data, cur, conn):
     for player in players:
         id = player["id"]
         name = player["name"]
-        birthyear = int(player["birthyear"][:4])
+        birthyear = int(player["dateOfBirth"][:4])
         nationality = player["nationality"]
         position_id = positions[player["position"]]
         cur.execute("INSERT OR IGNORE INTO Players (id, name, position_id, birthyear, nationality) VALUES (?,?,?,?,?)", (
@@ -136,7 +135,10 @@ def birthyear_nationality_search(age, country, cur, conn):
     # HINT: You'll have to use JOIN for this task.
 
 def position_birth_search(position, age, cur, conn):
-       pass
+    year = 2023 - age
+    return cur.execute("SELECT pl.name, po.position, pl.birthyear FROM Players pl " +
+                       "JOIN Positions po ON pl.position_id = po.id " +
+                       "WHERE po.position = ? AND pl.birthyear < ?", (position, year)).fetchall()
 
 
 # [EXTRA CREDIT]
