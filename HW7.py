@@ -115,7 +115,7 @@ def nationality_search(countries, cur, conn):
 def birthyear_nationality_search(age, country, cur, conn):
     year = 2023 - age
     return cur.execute("SELECT name, nationality, birthyear FROM Players " +
-                    "WHERE nationality = ?  AND birthyear < ?", (country, year)).fetchall()
+                    "WHERE nationality = ? AND birthyear < ?", (country, year)).fetchall()
 
 ## [TASK 4]: 15 points
 # finish the function position_birth_search
@@ -177,13 +177,46 @@ def position_birth_search(position, age, cur, conn):
 #     the passed year. 
 
 def make_winners_table(data, cur, conn):
-    pass
+    current_season_id = data['currentSeason']['id']
+    winners = {}
+    for season in data['seasons']:
+        if current_season_id == season['id']:
+            continue
+        if not season['winner']:
+            continue
+        winner = season['winner']
+        id = str(winner['id'])
+        name = winner['name']
+        if id not in winners:
+            winners[id] = name
+    cur.execute("CREATE TABLE IF NOT EXISTS Winners (id INTEGER PRIMARY KEY, name TEXT)")
+    for id in winners.keys():
+        cur.execute("INSERT OR IGNORE INTO Winners (id, name) VALUES (?,?)",(int(id), winners[id]))
+    conn.commit()
 
 def make_seasons_table(data, cur, conn):
-    pass
+    cur.execute("CREATE TABLE IF NOT EXISTS Seasons (id INTEGER PRIMARY KEY, winner_id TEXT, end_year INTEGER)")
+
+    current_season_id = data['currentSeason']['id']
+    for season in data['seasons']:
+        id = season['id']
+        if current_season_id != id and season['winner']:
+            winner_id = str(season['winner']['id'])
+            end_year = int(season['endDate'][0:4])
+            cur.execute("INSERT OR IGNORE INTO Seasons (id, winner_id, end_year) VALUES (?,?,?)",(id, winner_id, end_year))
+
+    conn.commit()
 
 def winners_since_search(year, cur, conn):
-    pass
+    year_int = int(year)
+    wins = {} # {'team name' : # wins since year}
+    results = cur.execute("SELECT w.name FROM Winners w " + 
+                          "JOIN Seasons s ON w.id = cast(s.winner_id as INTEGER) " +
+                          "WHERE s.end_year > ? ", (year_int,)).fetchall()
+    for row in results:
+        wins[row[0]] = wins.get(row[0], 0) + 1
+
+    return wins
 
 
 class TestAllMethods(unittest.TestCase):
@@ -242,17 +275,24 @@ class TestAllMethods(unittest.TestCase):
         self.cur2.execute('SELECT * from Winners')
         winners_list = self.cur2.fetchall()
 
-        pass
+        self.assertEqual(len(winners_list), 7)
+        self.assertEqual(winners_list[0], (57, "Arsenal FC"))
+        self.assertEqual(winners_list[6], (338, "Leicester City FC"))
 
     def test_make_seasons_table(self):
         self.cur2.execute('SELECT * from Seasons')
         seasons_list = self.cur2.fetchall()
 
-        pass
+        self.assertEqual(len(seasons_list), 28)
+        self.assertEqual(seasons_list[0], (23, "65", 2018))
+        self.assertEqual(seasons_list[27], (619, "65", 2021))
 
     def test_winners_since_search(self):
+        wins = winners_since_search("2016", self.cur2, self.conn2)
 
-        pass
+        self.assertEqual(len(wins), 3)
+        self.assertEqual(wins['Manchester City FC'], 3)
+        self.assertEqual(wins['Chelsea FC'], 1)
 
 
 def main():
